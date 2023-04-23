@@ -1,0 +1,1015 @@
+<template>
+  <div class="app-container">
+
+    <!-- 搜索工作栏 -->
+    <el-row :gutter="20">
+
+      <!--部门数据-->
+      <el-col :span="4" :xs="24">
+
+        <div class="head-container">
+
+          <el-input
+            v-model="deptName"
+            placeholder="请输入部门名称"
+            clearable
+            size="small"
+            prefix-icon="el-icon-search"
+            style="margin-bottom: 20px"
+            @clear="resetQuery"
+          />
+
+        </div>
+
+        <div class="head-container">
+          <el-tree
+            :data="deptOptions2"
+            :props="defaultProps"
+            :expand-on-click-node="false"
+            :filter-node-method="filterNode"
+            ref="tree"
+            @node-click="handleNodeClick"
+          />
+
+        </div>
+      </el-col>
+
+      <!--用户数据-->
+      <el-col
+        :span="20"
+        :gutter="5"
+        :xs="24"
+        style="border-left: 1px solid #1890ff; height: 85vh; overflow-y: auto"
+      >
+        <el-form
+          :model="queryParams"
+          ref="queryForm"
+          size="small"
+          :inline="true"
+          v-show="showSearch"
+          label-width="68px"
+        >
+          <el-form-item label="账号类型" prop="">
+            <el-select
+             v-model="queryParams.type"
+             placeholdel="请选择账号类型"
+             clearable
+             style="width: 210px"
+            >
+              <el-option :value="0" label="组织账号" :key="0"/>
+              <el-option :value="1" label="人员账号" :key="1"/>
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="账号名称" prop="username">
+            <el-input
+              v-model="queryParams.username"
+              placeholder="请输入账号名称"
+              clearable
+              style="width: 210px"
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+
+          <el-form-item label="用户姓名" prop="nickname">
+            <el-input
+              v-model="queryParams.nickname"
+              placeholder="请输入用户姓名"
+              clearable
+              style="width: 210px"
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="联系电话" prop="number">
+            <el-input
+              v-model="queryParams.number"
+              placeholder="请输入联系电话"
+              clearable
+              style="width: 210px"
+              @keyup.enter.native="handleQuery"
+            />
+          </el-form-item>
+
+<!--          <el-form-item label="账号状态" prop="status"  label-width="120px">-->
+<!--            <el-select-->
+<!--              v-model="queryParams.status"-->
+<!--              placeholder="账号状态"-->
+<!--              clearable-->
+<!--              style="width: 210px"-->
+<!--            >-->
+<!--              <el-option-->
+<!--                v-for="dict in statusDictDatas"-->
+<!--                :key="parseInt(dict.value)"-->
+<!--                :label="dict.label"-->
+<!--                :value="parseInt(dict.value)"-->
+<!--              />-->
+<!--            </el-select>-->
+<!--          </el-form-item>-->
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+            <!--            <el-button-->
+            <!--              type="primary"-->
+            <!--              plain-->
+            <!--              icon="el-icon-plus"-->
+            <!--              size="mini"-->
+            <!--              @click="handleAdd"-->
+            <!--              v-hasPermi="['system:user:create']"-->
+            <!--              >新增</el-button-->
+            <!--            >-->
+            <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <el-row :gutter="10" class="mb8">
+          <el-col :span="1.5">
+            <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd"
+                       v-hasPermi="['system:dept:create']">新增
+            </el-button>
+          </el-col>
+        </el-row>
+        <el-table v-loading="loading" :data="userList" style="margin-top: 6px">
+          <el-table-column
+            label="序号"
+            align="center"
+            type="index"
+            width="60"
+          />
+          <el-table-column
+            label="账号名称"
+            align="left"
+            key="username"
+            prop="username"
+            :show-overflow-tooltip="true"
+          />
+          <el-table-column
+            label="用户姓名"
+            align="left"
+            key="nickname"
+            prop="nickname"
+            :show-overflow-tooltip="true"
+          />
+          <el-table-column
+            label="联系电话"
+            align="left"
+            key="mobile"
+            prop="mobile"
+            :show-overflow-tooltip="true"
+          />
+          <el-table-column
+            label="最近登录时间"
+            align="center"
+            key="loginDate"
+            prop="loginDate"
+            :show-overflow-tooltip="true"
+          >
+            <template slot-scope="scope">
+              <span>{{ parseTime(scope.row.loginDate) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="账号状态" key="status" align="center">
+            <template slot-scope="scope">
+              <el-switch
+                v-model="scope.row.status"
+                :active-value="0"
+                :inactive-value="1"
+                @change="handleStatusChange(scope.row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="所属组织机构"
+            align="left"
+            prop="organizationDistrictMsg"
+            width="160"
+          >
+          </el-table-column>
+          <el-table-column
+            label="账号类型"
+            align="center"
+            key="workGroupStr"
+            prop="workGroupStr"
+            :show-overflow-tooltip="true"
+          >
+            <template slot-scope="scope">
+              <span v-if="scope.row.type==0">组织账号</span>
+              <span v-if="scope.row.type==1">人员账号</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            label="操作"
+            align="center"
+            width="160"
+            class-name="small-padding fixed-width"
+          >
+            <template slot-scope="scope">
+              <el-row>
+                <el-button
+                  size="mini"
+                  type="text"
+                  icon="el-icon-edit"
+                  @click="handleUpdate(scope.row)"
+                  v-hasPermi="['system:user:update']"
+                >修改</el-button
+                >
+                <el-button
+                  size="mini"
+                  type="text"
+                  icon="el-icon-edit"
+                  @click="handleDelete(scope.row)"
+                  v-hasPermi="['system:user:delete']"
+                >删除</el-button>
+              </el-row>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <pagination
+          v-show="total > 0"
+          :total="total"
+          :page.sync="queryParams.pageNo"
+          :limit.sync="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </el-col>
+    </el-row>
+
+
+<!--    弹框-->
+    <el-dialog :title="title" :visible.sync="open" width="800px" append-to-body :close-on-click-modal='closeOnClickModal'>
+      <el-form ref="addForm" :model="addForm" :rules="rules" label-width="80px">
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="账号类型" prop="type">
+              <el-select
+                v-model="addForm.type"
+                placeholdel="请选择账号类型"
+                clearable
+                style="width: 210px"
+              >
+                <el-option :value='0' label="组织账号" :key="0"/>
+                <el-option :value='1' label="人员账号" :key="1"/>
+<!--                <el-option-->
+<!--                v-for="item in orgPeo"-->
+<!--                :key="item.value"-->
+<!--                :label="item.label"-->
+<!--                :value="item.value"-->
+<!--                ></el-option>-->
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="账号名称" prop="username">
+              <el-input
+                v-model="addForm.username"
+                placeholder="请输入账号名称"
+                :disabled="orgDisabled  || peoDisabled"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+
+            <el-form-item v-show="addForm.type == 0" label="用户姓名" prop="nickname">
+              <el-input
+                v-model="addForm.nickname"
+                placeholder="请输入姓名"
+              />
+            </el-form-item>
+            <el-form-item v-show="addForm.type == 1" label="账号描述" prop="nickname">
+              <el-input
+                v-model="addForm.nickname"
+                placeholder="请输入账号描述"
+              />
+            </el-form-item>
+          </el-col>
+
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item  label="所属组织机构" prop="deptIdList">
+              <!--              <treeselect-->
+              <!--                v-model="addForm.deptId"-->
+              <!--                @select="changeDept"-->
+              <!--                :options="deptOptions"-->
+              <!--                :show-count="true"-->
+              <!--                placeholder="请选择用户部门"-->
+              <!--                :normalizer="normalizer"-->
+              <!--                :clearable="false"-->
+              <!--              />-->
+              <el-cascader
+                style="width: 100%"
+                v-model="addForm.deptIdList"
+                :options="deptOptions2"
+                :props="optionProps"
+                :show-all-levels="true"
+                @change="changeDept"
+                clearable
+                :disabled="orgDisabled"
+              >
+              </el-cascader>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="联系电话" prop="mobile">
+              <el-input
+                v-model="addForm.mobile"
+                placeholder="请输入联系电话"
+                maxlength="11"
+                :disabled="peoDisabled"
+              />
+            </el-form-item>
+
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="可访问系统角色" prop="roleIds">
+              <!--                          <Treeselect-->
+              <!--                            :multiple="true"-->
+              <!--                            :options="roleList"-->
+              <!--                            v-model="addForm.roleIds"-->
+              <!--                            :normalizer="normalizer"-->
+              <!--                            placeholder="请选择可访问系统角色"-->
+              <!--                          />-->
+              <el-cascader
+                style="width: 100%"
+                :show-all-levels="false"
+                v-model="addForm.roleIdsTemp"
+                :options="roleList"
+                :props="props"
+                clearable
+                @change="changeRoleIds"
+              ></el-cascader>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item v-if="addForm.type == 1" label="工作岗位" props="postIds">
+              <el-select
+                multiple
+                v-model="addForm.postIds"
+                placeholder="请选择工作岗位"
+                @change="handleChange"
+                :disabled="peoDisabled"
+              >
+                <el-option
+                  v-for="dict in workList"
+                  :key="parseInt(dict.id)"
+                  :label="dict.name"
+                  :value="parseInt(dict.id)"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" >
+            <el-form-item v-show="addForm.type==1" label="身份证号" prop="certNo">
+              <el-input
+                v-model="addForm.certNo"
+                placeholder="请输入身份证号"
+                maxlength="18"
+                :disabled="peoDisabled"
+              />
+            </el-form-item>
+
+          </el-col>
+        </el-row>
+        <el-row >
+          <el-col :span="12">
+            <el-form-item label="账号状态" prop="status">
+              <el-radio-group v-model="addForm.status">
+                <el-radio :label="0">启用</el-radio>
+                <el-radio :label="1">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-show="addForm.type==1" label="性别" prop="sex">
+              <el-radio-group v-model="addForm.sex" :disabled="formDisabled">
+                <el-radio :label="1">男</el-radio>
+                <el-radio :label="2">女</el-radio>
+                <el-radio :label="0">保密</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+
+        </el-row>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+        <el-button @click="cancel">取 消</el-button>
+      </div>
+    </el-dialog>
+
+  </div>
+</template>
+
+<script>
+import {
+  addUser,
+  changeUserStatus,
+  delUser,
+  getUser,
+  listUser,
+  updateUser,
+  getWorkByDept,
+  getUserGroupByDept,
+  getRoleListByDept,
+} from "@/api/system/user";
+import { getToken } from "@/utils/auth";
+import Treeselect from "@riophae/vue-treeselect";
+import "@riophae/vue-treeselect/dist/vue-treeselect.css";
+
+import { listSimpleDepts, queryTree } from "@/api/system/dept";
+import { listSimplePosts } from "@/api/system/post";
+import { handleSimpleList } from "@/api/system/subSystem";
+
+import { CommonStatusEnum } from "@/utils/constants";
+import { DICT_TYPE, getDictDatas } from "@/utils/dict";
+import {getTree} from "@/api/system/role";
+import { assignUserRole, listUserRoles } from "@/api/system/permission";
+import getPathById from '@/libs/getPathById.js'
+
+import Cookies from "js-cookie";
+import OrgDialog from '@/views/applicationMaintenance/userManagement/accountNumber/components/OrgDialog'
+import { getTreeQueryValueApi } from '@/views/applicationMaintenance/authorityManagement/menuManagement/api'
+import handleTree from '@/libs/handleTree'
+import {getAccountTreeApi,getUserApi,updateUserApi,getDiglogworkApi,postAddUserApi} from "./api"
+export default {
+
+  name: "User",
+
+  components: { OrgDialog, Treeselect },
+
+  data() {
+    return {
+      orgPeo:[{
+        value:0,
+        label:'组织账号'
+      },{
+        value:1,
+        label: '人员账号'
+      }
+      ],
+      formDisabled:false,
+      closeOnClickModal:false,
+      workList:[],
+      getUser:{},        //修改获取用户
+      peoDisabled:false, //  判断修改入口来禁用数据
+      orgDisabled:false, //  判断修改入口来禁用数据
+      getAddForm : {},
+      entrance:"",
+      // 遮罩层
+      loading: true,
+      // 导出遮罩层
+      exportLoading: false,
+      // 显示搜索条件
+      showSearch: true,
+      // 总条数
+      total: 0,
+      // 用户表格数据
+      userList: null,
+      // 弹出层标题
+      title: "",
+      // 部门树选项
+      deptOptions: undefined,
+      deptOptions2: [],
+      // optionProps: {
+      //   value: "id",
+      //   label: "name",
+      //   children: "children",
+      //   checkStrictly: true,
+      // },
+      // props:{
+      //   value: 'id',
+      //   label: 'name',
+      //   children: "children",
+      //   multiple: true,
+      //   checkStrictly: true
+      // },
+      props: {
+        value: 'id',
+        label: 'name',
+        children: 'children',
+        multiple: true,
+        checkStrictly: true
+      },
+      optionProps: {
+        value: 'id',
+        label: 'fullName',
+        children: 'children',
+        checkStrictly: true
+      },
+      // 是否显示弹出层
+      open: false,
+      // 部门名称
+      deptName: undefined,
+
+      // 状态数据字典
+      statusOptions: [],
+      // 性别状态字典
+      sexOptions: [],
+      // 岗位选项
+      postOptions: [],
+      // 角色选项
+      roleOptions: [],
+      // 表单参数
+      form: {},
+      defaultProps: {
+        children: "children",
+        label: "shortName",
+      },
+
+      // 查询参数
+      queryParams: {
+        pageNo: 1,
+        pageSize: 10,
+        username: undefined,
+        nickname: undefined,
+        status: undefined,
+        deptId: undefined,
+        type: undefined,
+        number: undefined,
+      },
+
+      // 表单校验
+      rules: {
+        username: [
+          { required: true, message: '用户账号不能为空', trigger: 'blur' }
+        ],
+        nickname: [
+          { required: true, message: '用户姓名不能为空', trigger: 'blur' }
+        ],
+        certNo: [
+          { required: false, message: '身份证号不能为空', trigger: 'blur' }
+        ],
+        deptIdList: [
+          { required: true, message: '请选择用户部门', trigger: 'change' }
+        ],
+        mobile: [
+          {
+            required: true,
+            pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/,
+            message: '请输入正确的手机号码',
+            trigger: 'blur'
+          }
+        ],
+        sex: [{ required: false, message: '请选择性别', trigger: 'change' }],
+        status: [
+          { required: true, message: '请选择当前状态', trigger: 'change' }
+        ],
+        subsystemIds: [
+          { required: true, message: '请选择子系统', trigger: 'blur', type: 'array' }
+        ],
+        type: [
+          { required: true, message: '请选择账号类型', trigger: 'change' }
+        ],
+        sort: [
+          {
+            required: true,
+            pattern: /^[0-9]*$/,
+            message: '排序号只能为数字',
+            trigger: 'blur'
+          }
+        ]
+      },
+      // 是否显示弹出层（角色权限）
+      openRole: false,
+
+      // 枚举
+      SysCommonStatusEnum: CommonStatusEnum,
+      // 数据字典
+      statusDictDatas: getDictDatas(DICT_TYPE.COMMON_STATUS),
+      sexDictDatas: getDictDatas(DICT_TYPE.SYSTEM_USER_SEX),
+      addForm: {
+        // subsystemIds: []
+        type:0,
+        roleIds: ""
+      },
+      postList: [],
+      userGroupList: [],
+      roleList: [],
+      updateUser: Cookies.get("username"),
+      subsystemList:[]
+    };
+  },
+
+  watch: {
+    // 根据名称筛选部门树
+    deptName(val) {
+      this.$refs.tree.filter(val);
+    },
+  },
+
+  created() {
+    this.getList();
+    this.getTreeselect();
+    this.getRoleListByDept()
+  },
+  mounted() {
+    // console.log()
+    // this.addForm = JSON.parse(JSON.stringify(this.getUserForm))
+    // console.log('修改窗口this.addForm', this.addForm)
+    // if (this.entrance == 'revise') {
+    //
+    // }
+    this.getDialogWork()
+
+  },
+  methods: {
+    //可访问系统切换
+    changeRoleIds(obj1) {
+      console.log('obj1', obj1)
+      let id = obj1[obj1.length - 1]
+      this.addForm.roleIds = id
+      // this.getWorkByDept(id)
+      // this.getUserGroupByDept(id);
+      // this.getRoleListByDept(id);
+      // this.$emit('changeDept',obj1)
+
+    },
+    //获取工作岗位
+    async getDialogWork(){
+      const  {data} = await getDiglogworkApi()
+      this.workList = data
+    },
+    deleteChildren(childs, name) {
+      for (let i = childs.length; i--; i > 0) {
+        if (childs[i][name]) {
+          if (childs[i][name].length) {
+            this.deleteChildren(childs[i][name], name);
+          } else {
+            delete childs[i][name];
+          }
+        }
+      }
+      return childs;
+    },
+    handleChange(value) {
+      console.log('value',value)
+
+      this.addForm={...this.addForm}
+
+    },
+    // 取消按钮
+    cancel() {
+      this.open = false;
+      this.reset();
+    },
+
+    //部门切换
+    changeDept(obj1) {
+      console.log('obj',obj1)
+      this.$nextTick(()=>{
+        let id = obj1[obj1.length-1];
+        this.addForm.deptId = id
+        this.getWorkByDept(id);
+        // this.getUserGroupByDept(id);
+        // this.getRoleListByDept(id);
+      })
+
+    },
+    async getWorkByDept(id) {
+      await getWorkByDept(id).then((res) => {
+        if (res.code == 0) {
+          this.postList = (res.data[0] || {}).postDOS || [];
+          this.addForm.postIds = undefined;
+          console.log(' this.postList', this.postList)
+        }
+      });
+    },
+    async getUserGroupByDept(id) {
+      await getUserGroupByDept(id).then((res) => {
+        if (res.code == 0) {
+          this.userGroupList = res.data || [];
+          this.addForm.workGroupIds = undefined;
+        }
+      });
+    },
+    async getRoleListByDept(id) {
+      // await getRoleListByDept(id).then((res) => {
+      //   if (res.code == 0) {
+      //     let data = res.data;
+      //     for(let i = 0; i<data.length; i++) {
+      //        if(data[i].roleDOS.length == 0 || !data[i].roleDOS) {
+      //         data[i].isDisabled = true;
+      //        }
+      //      }
+      //     this.roleList = this.deleteChildren(res.data, 'roleDOS');
+      //     this.addForm.roleIds = undefined;
+      //   }
+      // });
+      const param = {
+        // deptId: id
+      }
+      await getTree(param).then(response => {
+        this.roleList = response.data
+        console.log('33333',this.roleList)
+      })
+    },
+    convertToTreeData(data) {
+      let returnData = [];
+      for (let i = 0; i < data.length; i++) {
+        let tempObj = {
+          title: data[i].name,
+          value: data[i].id,
+          key: data[i].id,
+        };
+        if ("children" in data[i] && data[i].children.length > 0) {
+          tempObj.children = this.convertToTreeData(data[i].children);
+        }
+        returnData.push(tempObj);
+      }
+      return returnData;
+    },
+    /** 查询用户列表 */
+    getList() {
+      this.loading = true;
+      console.log('queryParams',this.queryParams)
+      listUser(this.queryParams).then((response) => {
+        this.userList = response.data.records;
+        this.total = response.data.total;
+        this.loading = false;
+      });
+    },
+    /** 查询部门下拉树结构 + 岗位下拉 */
+    getTreeselect() {
+      // getAccountTreeApi().then((response) => {
+      //   // 处理 deptOptions 参数
+      //   this.deptOptions = [];
+      //   let data = this.deleteChildren([response.data], 'children')
+      //
+      //   this.deptOptions.push(...this.handleTree(data, "id"));
+      // });
+      getAccountTreeApi().then((response) => {
+        console.log('getAccountTreeApiresponse???',response)
+        // 处理 deptOptions 参数
+         this.deptOptions2 = []
+        let data = this.deleteChildren([response.data], 'children')
+        this.deptOptions2.push(...this.handleTree(data, "id"));
+         console.log('deptOptions2',this.deptOptions2)
+
+        // this.depxtOptions2 = response.data
+      });
+      listSimplePosts().then((response) => {
+        // 处理 postOptions 参数
+        this.postOptions = [];
+        this.postOptions.push(...response.data);
+      });
+    },
+    // 筛选节点
+    filterNode(value, data) {
+      if (!value) return true;
+      return data.name.indexOf(value) !== -1;
+    },
+    // 节点单击事件
+    handleNodeClick(data) {
+      console.log(  )
+      this.queryParams.deptId = data.id;
+      this.getList();
+    },
+    // 用户状态修改
+    handleStatusChange(row) {
+      let text = row.status === CommonStatusEnum.ENABLE ? "启用" : "停用";
+      this.$modal
+        .confirm('确认要"' + text + '""' + row.username + '"用户吗?')
+        .then(function () {
+          return changeUserStatus(row.id, row.status);
+        })
+        .then(() => {
+          this.$modal.msgSuccess(text + "成功");
+        })
+        .catch(function () {
+          row.status =
+            row.status === CommonStatusEnum.ENABLE
+              ? CommonStatusEnum.DISABLE
+              : CommonStatusEnum.ENABLE;
+        });
+    },
+    // 表单重置
+    reset() {
+      this.addForm = {
+        type:undefined,
+        id: undefined,
+        nickname: undefined,
+        username: undefined,
+        // deptId: undefined,
+        mobile: undefined,
+        sex: undefined,
+        roleIds: undefined,
+        roleIdsTemp: undefined,
+        postIds: undefined,
+        telPlatformStatus: undefined,
+        telPlatformExt: undefined,
+        telPlatformGroup: undefined,
+        sort: undefined,
+        workGroupIds: undefined,
+        status: undefined,
+        subsystemIds: [],
+        deptIdList:[],
+        peoDisabled:false, //  判断修改入口来禁用数据
+        orgDisabled:false, //  判断修改入口来禁用数据
+      };
+      this.userGroupList = [];
+      this.postList = [];
+      this.resetForm("addForm");
+    },
+    /** 搜索按钮操作 */
+    handleQuery() {
+      //   this.queryParams.pageNo = 1;
+      console.log(1111)
+      this.getList();
+      // this.loading = true
+      // let queryValue = {
+      //   systemId: this.sysValue,
+      //   name: this.queryParams.name,
+      //   status: this.queryParams.status
+      // }
+      // console.log('queryValue', queryValue)
+      // getTreeQueryValueApi(queryValue).then((response) => {
+      //   console.log('this.menuList', this.menuList)
+      //   this.userList = handleTree(response.data, 'id', 'parentId')
+      //   this.loading = false
+      // })
+    },
+    /** 重置按钮操作 */
+    resetQuery() {
+      this.resetForm("queryForm");
+      this.queryParams.pageNo = 1;
+      this.queryParams.pageSize = 10;
+      this.queryParams.username = undefined;
+      this.queryParams.nickname = undefined;
+      this.queryParams.status = undefined;
+      this.queryParams.deptId = undefined;
+      this.queryParams.type = undefined;
+      this.queryParams.number = undefined;
+      this.handleQuery();
+    },
+    /** 新增按钮操作 */
+    handleAdd() {
+      console.log('addForm',this.addForm.type)
+      this.formDisabled = false
+      this.entrance ="increase"
+      this.reset();
+      this.addForm.type=0
+      // 获得下拉数据
+      this.getTreeselect();
+      // 打开表单，并设置初始化
+      this.open = true;
+      this.title = "添加用户";
+    },
+    /** 修改按钮操作 */
+    handleUpdate(row) {
+      this.reset();
+      this.getTreeselect();
+      const id = row.id;
+
+
+      getUserApi({id}).then(async (res) => {
+        if(res.data.type === 0 && res.data.type === true){
+          this.orgDisabled = true
+        }else if(res.data.type === 1){
+          this.peoDisabled = true
+        }
+        console.log('res.dataid查询数据' ,res.data)
+        this.addForm = res.data;
+
+        this.addForm.telPlatformStatus = (
+          res.data.telplatfromUser || {}
+        ).telPlatformStatus;
+        this.addForm.telPlatformExt = (
+          res.data.telplatfromUser || {}
+        ).telPlatformExt;
+        this.addForm.telPlatformGroup = (
+          res.data.telplatfromUser || {}
+        ).telPlatformGroup;
+        let data = res.data;
+        this.addForm.subsystemIds = []
+        data.subsystems.map((item) =>{
+          this.addForm.subsystemIds.push(item.id)
+        })
+        this.addForm.deptIdList = []
+        this.addForm.deptIdList = getPathById(this.deptOptions2,res.data.deptId)
+
+
+        let roleIds = [];
+        let postIds = [];
+        let workGroupIds = [];
+
+        data.postList.map((item) => {
+          postIds.push(item.id);
+        })
+        // data.workGroups.map((item) => {
+        //   workGroupIds.push(item.id);
+        // })
+        this.addForm.roleIdsTemp = []
+        console.log('qqqqq',this.roleList)
+        console.log('qqqqq',data.roleList)
+        data.roleList.forEach((item) => {
+          this.addForm.roleIdsTemp.push(getPathById(this.roleList,item.id))
+        });
+
+        this.open = true;
+        this.title = "修改用户";
+        // await this.getUserGroupByDept(res.data.deptId);
+        // await this.getRoleListByDept(res.data.deptId,data.roleList)
+        // await this.getWorkByDept(res.data.deptId);
+        // this.$set(this.addForm, "roleIds", roleIds);
+
+        this.$set(this.addForm, "postIds", postIds);
+        // this.$set(this.addForm, "workGroupIds", workGroupIds);
+        console.log(this.addForm, ".....");
+      });
+    },
+    /** 提交按钮 */
+    submitForm: function() {
+      console.log('entrance??', this.entrance)
+      console.log('提交addForm', this.addForm)
+
+      console.log('aww', this.addForm.subsystemIds)
+      this.$refs.addForm.validate((valid) => {
+        // const arr = []
+        // if (this.addForm.roleIdsTemp.length) {
+        //   this.addForm.roleIdsTemp.forEach(item => {
+        //     arr.push(item[item.length - 1])
+        //   })
+        // }
+        // this.addForm.roleIds = arr
+        if (valid) {
+          if (this.addForm.id !== undefined) {
+            updateUserApi(this.addForm).then((response) => {
+              this.$modal.msgSuccess("修改成功");
+              this.open = false;
+              this.getList();
+            })
+          } else {
+
+            postAddUserApi(this.addForm).then((response) => {
+                        this.$modal.msgSuccess("新增成功");
+                        this.open = false;
+                        this.getList();
+
+            })
+          }
+        }
+      })
+    },
+
+    /** 删除按钮操作 */
+    handleDelete(row) {
+      const ids = row.id || this.ids;
+      this.$modal
+        .confirm("是否确认删除用户数据?")
+        .then(function () {
+          return delUser(ids);
+        })
+        .then(() => {
+          this.getList();
+          this.$modal.msgSuccess("删除成功");
+        })
+        .catch(() => {});
+    },
+    // 格式化部门的下拉框
+    normalizer(node) {
+      return {
+        id: node.id,
+        label: node.name,
+        children: node.children,
+      };
+    },
+  },
+
+};
+</script>
+<style scoped>
+::v-deep .el-form-item__label {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+::v-deep .el-form-item--medium .el-form-item__label {
+  width: 110px !important;
+}
+::v-deep .el-form-item--medium .el-form-item__content {
+  margin-left: 110px !important;
+}
+::v-deep .el-select {
+  width: 100%;
+}
+::v-deep .vue-treeselect div,
+.vue-treeselect {
+  border-color: #e9e9eb;
+  color: #909399;
+}
+::v-deep .vue-treeselect__multi-value-item {
+  background-color: #f4f4f5;
+  min-height: 24px;
+  line-height: 24px;
+}
+form {
+  /*white-space: nowrap;*/
+}
+</style>
